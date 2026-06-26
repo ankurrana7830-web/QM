@@ -1,5 +1,33 @@
-// Web App load karne ke liye
-function doGet() {
+// Web App load karne ke liye aur API handle karne ke liye
+function doGet(e) {
+  // Agar API request hai (action parameter present hai)
+  if (e && e.parameter && e.parameter.action) {
+    try {
+      const action = e.parameter.action;
+      const args = e.parameter.args ? JSON.parse(e.parameter.args) : [];
+      let result = null;
+      
+      if (action === "verifyLoginUser") result = verifyLoginUser.apply(this, args);
+      else if (action === "getCombinedDashboardData") result = getCombinedDashboardData.apply(this, args);
+      else if (action === "submitNewLead") result = submitNewLead.apply(this, args);
+      else if (action === "getFormDropdownData") result = getFormDropdownData.apply(this, args);
+      else if (action === "getDealDropdowns") result = getDealDropdowns.apply(this, args);
+      else if (action === "updateDealRow") result = updateDealRow.apply(this, args);
+      else if (action === "sendOTP") result = sendOTP.apply(this, args);
+      else if (action === "verifyOTPAndResetPassword") result = verifyOTPAndResetPassword.apply(this, args);
+      else if (action === "getDashboardRawData") result = getDashboardRawData.apply(this, args);
+      else if (action === "getLeadTableData") result = getLeadTableData.apply(this, args);
+      else if (action === "getRevenueData") result = getRevenueData.apply(this, args);
+      else {
+        result = { error: "Action not found: " + action };
+      }
+      return ContentService.createTextOutput(JSON.stringify({ success: true, data: result })).setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // Warna normal web page dikhayein
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('Redcliffe Quote Master')
@@ -174,47 +202,52 @@ function getFormDropdownData() {
     // Read Data Validation dropdown list from a column
     function getValidationValues(colIdx) {
       if (colIdx === -1) return [];
+      
+      let cache = CacheService.getScriptCache();
+      let cacheKey = "form_dropdown_" + colIdx;
+      let cached = cache.get(cacheKey);
+      if (cached) {
+        try { return JSON.parse(cached); } catch(e) {}
+      }
+
+      let result = [];
       try {
-        // Check data validation on row 2 of this column
         let rule = mainSheet.getRange(2, colIdx + 1).getDataValidation();
         if (rule) {
           let criteriaType = rule.getCriteriaType();
-          // VALUE_IN_LIST = hardcoded list in validation
           if (criteriaType === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
             let values = rule.getCriteriaValues();
-            if (values && values.length > 0) {
-              return values[0]; // Array of allowed values
-            }
+            if (values && values.length > 0) result = values[0];
           }
-          // VALUE_IN_RANGE = validation from a cell range
           if (criteriaType === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
             let range = rule.getCriteriaValues()[0];
             if (range) {
               let rangeValues = range.getValues();
-              let result = [];
               for (let r = 0; r < rangeValues.length; r++) {
                 let val = rangeValues[r][0];
                 if (val !== "" && val !== undefined && val !== null) {
                   result.push(val.toString().trim());
                 }
               }
-              return result;
             }
           }
         }
-      } catch(e) {
-        // If validation read fails, fall back to unique values
+      } catch(e) {}
+      
+      if (result.length === 0) {
+        // Fallback: read unique values from existing data
+        let uniqueSet = new Set();
+        for (let i = 1; i < mainData.length; i++) {
+          let val = mainData[i][colIdx];
+          if (val !== "" && val !== undefined && val !== null) {
+            uniqueSet.add(val.toString().trim());
+          }
+        }
+        result = Array.from(uniqueSet).sort();
       }
       
-      // Fallback: read unique values from existing data
-      let uniqueSet = new Set();
-      for (let i = 1; i < mainData.length; i++) {
-        let val = mainData[i][colIdx];
-        if (val !== "" && val !== undefined && val !== null) {
-          uniqueSet.add(val.toString().trim());
-        }
-      }
-      return Array.from(uniqueSet).sort();
+      try { cache.put(cacheKey, JSON.stringify(result), 3600); } catch(e) {}
+      return result;
     }
 
     types = getValidationValues(findMainCol("Type"));
@@ -505,13 +538,22 @@ function getDealDropdowns() {
 
   function getValidation(colNum) {
     if (colNum <= 0) return [];
+    
+    let cache = CacheService.getScriptCache();
+    let cacheKey = "deal_dropdown_" + colNum;
+    let cached = cache.get(cacheKey);
+    if (cached) {
+      try { return JSON.parse(cached); } catch(e) {}
+    }
+    
+    let result = [];
     try {
       let rule = sheet.getRange(2, colNum).getDataValidation();
       if (rule) {
         let type = rule.getCriteriaType();
         if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
           let vals = rule.getCriteriaValues();
-          return (vals && vals.length > 0) ? vals[0] : [];
+          if (vals && vals.length > 0) result = vals[0];
         }
         if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
           let range = rule.getCriteriaValues()[0];
@@ -524,15 +566,17 @@ function getDealDropdowns() {
               let actualRows = Math.min(numRows, Math.max(1, lastRowInSheet - startRow + 1));
               let col = range.getColumn();
               let numCols = range.getNumColumns();
-              return rSheet.getRange(startRow, col, actualRows, numCols).getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
+              result = rSheet.getRange(startRow, col, actualRows, numCols).getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
             } else {
-              return range.getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
+              result = range.getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
             }
           }
         }
       }
     } catch(e) {}
-    return [];
+    
+    try { cache.put(cacheKey, JSON.stringify(result), 3600); } catch(e) {}
+    return result;
   }
 
   return {
@@ -951,13 +995,22 @@ function getCombinedDashboardData() {
   let types = [], requirements = [], cities = [], quoteSharedBy = [];
   function getValidationValuesFromSheet(colIdx) {
     if (colIdx === -1) return [];
+    
+    let cache = CacheService.getScriptCache();
+    let cacheKey = "qm_dropdown_" + colIdx;
+    let cached = cache.get(cacheKey);
+    if (cached) {
+      try { return JSON.parse(cached); } catch(e) {}
+    }
+
+    let result = [];
     try {
       let rule = qmSheet.getRange(2, colIdx + 1).getDataValidation();
       if (rule) {
         let criteriaType = rule.getCriteriaType();
         if (criteriaType === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
           let values = rule.getCriteriaValues();
-          if (values && values.length > 0) return values[0];
+          if (values && values.length > 0) result = values[0];
         }
         if (criteriaType === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
           let range = rule.getCriteriaValues()[0];
@@ -970,24 +1023,30 @@ function getCombinedDashboardData() {
               let actualRows = Math.min(numRows, Math.max(1, lastRowInSheet - startRow + 1));
               let col = range.getColumn();
               let numCols = range.getNumColumns();
-              return rSheet.getRange(startRow, col, actualRows, numCols).getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
+              result = rSheet.getRange(startRow, col, actualRows, numCols).getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
             } else {
-              return range.getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
+              result = range.getValues().flat().filter(v => v !== "").map(v => v.toString().trim());
             }
           }
         }
       }
     } catch(e) {}
     
-    // Fallback: unique values in column
-    let uniqueSet = new Set();
-    for (let i = 1; i < qmValues.length; i++) {
-      let val = qmValues[i][colIdx];
-      if (val !== "" && val !== undefined && val !== null) {
-        uniqueSet.add(val.toString().trim());
+    if (result.length === 0) {
+      // Fallback: unique values in column
+      let uniqueSet = new Set();
+      for (let i = 1; i < qmValues.length; i++) {
+        let val = qmValues[i][colIdx];
+        if (val !== "" && val !== undefined && val !== null) {
+          uniqueSet.add(val.toString().trim());
+        }
       }
+      result = Array.from(uniqueSet).sort();
     }
-    return Array.from(uniqueSet).sort();
+    
+    // Cache for 1 hour
+    try { cache.put(cacheKey, JSON.stringify(result), 3600); } catch(e) {}
+    return result;
   }
 
   types = getValidationValuesFromSheet(findQmCol("Type"));
@@ -1083,4 +1142,43 @@ function getCombinedDashboardData() {
 // Helper to force-trigger MailApp permission dialog
 function testSendEmail() {
   MailApp.sendEmail(Session.getActiveUser().getEmail(), "Redcliffe Quote Master - Permission Test", "If you receive this, permissions are authorized successfully!");
+}
+
+// REST API Endpoint for Vercel Deployment
+function doPost(e) {
+  try {
+    const postData = JSON.parse(e.postData.contents);
+    const action = postData.action;
+    const args = postData.args || [];
+    
+    let result = null;
+    
+    if (action === "verifyLoginUser") result = verifyLoginUser.apply(this, args);
+    else if (action === "getCombinedDashboardData") result = getCombinedDashboardData.apply(this, args);
+    else if (action === "submitNewLead") result = submitNewLead.apply(this, args);
+    else if (action === "getFormDropdownData") result = getFormDropdownData.apply(this, args);
+    else if (action === "getDealDropdowns") result = getDealDropdowns.apply(this, args);
+    else if (action === "updateDealRow") result = updateDealRow.apply(this, args);
+    else if (action === "sendOTP") result = sendOTP.apply(this, args);
+    else if (action === "verifyOTPAndResetPassword") result = verifyOTPAndResetPassword.apply(this, args);
+    else if (action === "getDashboardRawData") result = getDashboardRawData.apply(this, args);
+    else if (action === "getLeadTableData") result = getLeadTableData.apply(this, args);
+    else if (action === "getRevenueData") result = getRevenueData.apply(this, args);
+    else {
+      result = { error: "Action not found: " + action };
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ success: true, data: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Handle CORS preflight requests
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.JSON);
 }

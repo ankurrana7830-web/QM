@@ -1,4 +1,4 @@
-
+﻿
     // Theme initialization (check localStorage early to avoid flicker)
     (function initTheme() {
       const savedTheme = localStorage.getItem('theme');
@@ -47,7 +47,7 @@
           return;
         }
         
-        // Valid session found — auto-login
+        // Valid session found â€” auto-login
         loggedInUser.name = session.name || 'User';
         loggedInUser.role = session.role || 'Client';
         loggedInUser.email = session.email || '';
@@ -524,7 +524,7 @@
           btn.disabled = false;
           if (res.success) {
             showToast('\uD83C\uDF89 Password reset successful!', 'success');
-            // Move to Step 3 — Success
+            // Move to Step 3 â€” Success
             document.getElementById('forgot-step2').classList.add('hidden');
             document.getElementById('forgot-step3').classList.remove('hidden');
             
@@ -852,13 +852,13 @@
       
       let html = '';
       records.forEach(r => {
-        let revFormatted = r.revenue ? '₹' + r.revenue.toLocaleString('en-IN') : '—';
+        let revFormatted = r.revenue ? 'â‚¹' + r.revenue.toLocaleString('en-IN') : 'â€”';
         html += '<tr class="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors">';
-        html += '<td class="py-3 px-3 text-sky-400 font-mono text-xs font-bold">' + (r.quoteCode || '—') + '</td>';
-        html += '<td class="py-3 px-3 text-white font-medium truncate max-w-[180px]">' + (r.clientName || '—') + '</td>';
+        html += '<td class="py-3 px-3 text-sky-400 font-mono text-xs font-bold">' + (r.quoteCode || 'â€”') + '</td>';
+        html += '<td class="py-3 px-3 text-white font-medium truncate max-w-[180px]">' + (r.clientName || 'â€”') + '</td>';
         html += '<td class="py-3 px-3 text-xs">' + getStatusBadge(r.quoteStatus) + '</td>';
-        html += '<td class="py-3 px-3 text-slate-400 text-xs">' + (r.type || '—') + '</td>';
-        html += '<td class="py-3 px-3 text-slate-300 text-xs">' + (r.amName || '—') + '</td>';
+        html += '<td class="py-3 px-3 text-slate-400 text-xs">' + (r.type || 'â€”') + '</td>';
+        html += '<td class="py-3 px-3 text-slate-300 text-xs">' + (r.amName || 'â€”') + '</td>';
         html += '<td class="py-3 px-3 text-right text-emerald-400 font-bold">' + revFormatted + '</td>';
         html += '</tr>';
       });
@@ -1191,7 +1191,7 @@
         records: recordsToProcess
       };
 
-      animateCounter("kpi-rev-total", totalRev, 900, '₹');
+      animateCounter("kpi-rev-total", totalRev, 900, 'â‚¹');
       animateCounter("kpi-rev-packages", uniquePackages.size, 600);
       document.getElementById("kpi-rev-source").innerText = topSource;
       document.getElementById("kpi-rev-center").innerText = topCenter;
@@ -1250,7 +1250,7 @@
       
       // Update Title & Badge
       titleEl.innerText = groupVal + "-wise " + (metricVal === 'Revenue' ? 'Revenue' : 'Volume') + " Breakdown";
-      badgeEl.innerText = metricVal === 'Revenue' ? "Currency (₹)" : "Count (Tx)";
+      badgeEl.innerText = metricVal === 'Revenue' ? "Currency (â‚¹)" : "Count (Tx)";
       badgeEl.className = metricVal === 'Revenue' 
         ? "text-xs text-violet-400 border border-violet-500/30 bg-violet-900/20 px-2 py-1 rounded"
         : "text-xs text-sky-400 border border-sky-500/30 bg-sky-900/20 px-2 py-1 rounded";
@@ -1267,7 +1267,7 @@
               label: function(context) {
                 let value = context.raw || 0;
                 if (metricVal === 'Revenue') {
-                  return ' Revenue: ₹' + value.toLocaleString('en-IN');
+                  return ' Revenue: â‚¹' + value.toLocaleString('en-IN');
                 } else {
                   return ' Count: ' + value + ' deals';
                 }
@@ -2155,7 +2155,7 @@
                   label: function(ctx) {
                     let total = ctx.dataset.data.reduce((a,b) => a + b, 0);
                     let pct = ((ctx.parsed / total) * 100).toFixed(1);
-                    return ctx.label + ' — ' + ctx.parsed + ' (' + pct + '%)';
+                    return ctx.label + ' â€” ' + ctx.parsed + ' (' + pct + '%)';
                   }
                 }
               }
@@ -2280,7 +2280,7 @@
       }
       
       paginatedRecords.forEach((r, i) => {
-        let volFormatted = r.employeesCount ? parseInt(r.employeesCount).toLocaleString('en-IN') : '—';
+        let volFormatted = r.employeesCount ? parseInt(r.employeesCount).toLocaleString('en-IN') : 'â€”';
         html += '<tr class="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors">';
         html += '<td class="py-3 px-4 text-slate-500 text-sm font-mono">' + (r.quoteCode || 'N/A') + '</td>';
         html += '<td class="py-3 px-4 text-white font-medium truncate max-w-[200px]">' + (r.clientName || 'N/A') + '</td>';
@@ -2690,7 +2690,7 @@
     }
 
     function getStatusBadge(status) {
-      if (!status) return '<span class="text-slate-500">—</span>';
+      if (!status) return '<span class="text-slate-500">â€”</span>';
       let s = status.toLowerCase();
       if (s.includes('shared') || s.includes('sent')) return '<span class="px-2 py-0.5 rounded bg-sky-900/40 text-sky-300 text-[10px]">' + status + '</span>';
       if (s.includes('pending')) return '<span class="px-2 py-0.5 rounded bg-amber-900/40 text-amber-300 text-[10px]">' + status + '</span>';
@@ -2699,7 +2699,7 @@
     }
 
     function getDealBadge(status) {
-      if (!status) return '<span class="text-slate-500">—</span>';
+      if (!status) return '<span class="text-slate-500">â€”</span>';
       let s = status.toLowerCase();
       if (s.includes('won') || s.includes('closed') || s.includes('done') || s.includes('launched')) return '<span class="px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-300 text-[10px] font-bold">' + status + '</span>';
       if (s.includes('lost') || s.includes('dropped') || s.includes('cancelled')) return '<span class="px-2 py-0.5 rounded bg-rose-900/40 text-rose-300 text-[10px]">' + status + '</span>';
@@ -2739,11 +2739,11 @@
       currentDealRowIndex = rowIndex;
 
       // Populate header info
-      document.getElementById('modal-subtitle').innerText = (r.quoteCode || '—') + ' — ' + (r.client || 'Unknown');
-      document.getElementById('modal-code').innerText = r.quoteCode || '—';
-      document.getElementById('modal-client').innerText = r.client || '—';
-      document.getElementById('modal-contact').innerText = (r.contact || '—') + (r.phone ? ' (' + r.phone + ')' : '');
-      document.getElementById('modal-am').innerText = r.am || '—';
+      document.getElementById('modal-subtitle').innerText = (r.quoteCode || 'â€”') + ' â€” ' + (r.client || 'Unknown');
+      document.getElementById('modal-code').innerText = r.quoteCode || 'â€”';
+      document.getElementById('modal-client').innerText = r.client || 'â€”';
+      document.getElementById('modal-contact').innerText = (r.contact || 'â€”') + (r.phone ? ' (' + r.phone + ')' : '');
+      document.getElementById('modal-am').innerText = r.am || 'â€”';
 
       // Fill editable fields with current values
       document.getElementById('m-remarks').value = r.remarks || '';
@@ -2986,7 +2986,7 @@
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', function(e) {
-      // Escape → close modal/sidebar
+      // Escape â†’ close modal/sidebar
       if (e.key === 'Escape') {
         const modal = document.getElementById('deal-modal');
         if (modal && !modal.classList.contains('hidden')) {
@@ -3065,7 +3065,7 @@
         html += '<td class="py-3 px-3 text-slate-400 text-xs">' + r.date + '</td>';
         html += '<td class="py-3 px-3 text-white text-xs font-medium truncate max-w-[150px]">' + r.client + '</td>';
         html += '<td class="py-3 px-3 text-slate-300 text-xs truncate max-w-[120px]">' + r.contact + '</td>';
-        html += '<td class="py-3 px-3 text-xs"><span class="px-2 py-0.5 rounded bg-violet-900/30 text-violet-300 text-[10px]">' + (r.type || '—') + '</span></td>';
+        html += '<td class="py-3 px-3 text-xs"><span class="px-2 py-0.5 rounded bg-violet-900/30 text-violet-300 text-[10px]">' + (r.type || 'â€”') + '</span></td>';
         html += '<td class="py-3 px-3 text-slate-300 text-xs">' + r.am + '</td>';
         html += '<td class="py-3 px-3 text-xs">' + getStatusBadge(r.quoteStatus) + '</td>';
         html += '<td class="py-3 px-3 text-xs">' + getDealBadge(r.dealStatus) + '</td>';
