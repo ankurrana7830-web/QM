@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <script>
@@ -2846,54 +2846,78 @@
       document.getElementById('guide-modal').classList.add('hidden');
     }
 
-    // ============== COMBINED DATA LOAD (PHASE 12 OPTIMIZATION) ==============
+    // ============== COMBINED DATA LOAD (PHASE 12 OPTIMIZATION & CACHING) ==============
+    function renderDashboardData(response) {
+      if (!response.success) {
+        console.error("Dashboard Combined Loading Error:", response.error);
+        showToast("\u274C Database Error: " + response.error, "error");
+        return;
+      }
+      
+      // 1. Process Quote Master Data
+      globalMasterData = response.quoteMasterRecords || [];
+      setupFilters();
+      applyGlobalFilters();
+      setupExecFilters();
+      applyExecFilters();
+      
+      // 2. Process Revenue Data
+      globalRevenueRecords = response.revenueRecords || [];
+      revenueDataProcessed = true;
+      setupSalesFilters();
+      applySalesFilters();
+      
+      // 3. Cache and Eagerly Populate Dropdowns
+      if (response.dropdownData) {
+        cachedDropdownData = response.dropdownData;
+        formDropdownsLoaded = true;
+        populateFormDropdowns(response.dropdownData);
+      }
+      
+      // 4. Cache and Populate Lead Table
+      if (response.leadTableData) {
+        cachedLeadTableRows = response.leadTableData.rows || [];
+        cachedLeadTableTotal = response.leadTableData.total || 0;
+        buildLeadTable(cachedLeadTableRows);
+      }
+    }
+
     function loadDashboardData() {
-      // Set loading spinners for all KPI elements
+      // Set loading spinners for all KPI elements if no cache exists
+      const hasCache = localStorage.getItem('qm_dashboard_data_v1');
       ['kpi-total-quotes', 'kpi-conv-rate', 'kpi-pending', 'kpi-loss-rate', 'kpi-top-performer',
        'kpi-deals-won', 'kpi-deals-lost', 'kpi-deals-pending', 'kpi-top-channel',
        'exec-kpi-pipeline', 'exec-kpi-top-client', 'exec-kpi-active-clients', 'exec-kpi-package-count',
        'kpi-rev-total', 'kpi-rev-packages'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        if (el && !hasCache) el.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
       });
 
+      // Load from Local Storage Cache First (Instant Load)
+      if (hasCache) {
+        try {
+          const cachedResponse = JSON.parse(hasCache);
+          renderDashboardData(cachedResponse);
+          // Optional subtle toast to let user know fresh data is on the way
+          // showToast("\uD83D\uDD04 Updating data in background...", "info");
+        } catch(e) {
+          console.error("Cache parse error:", e);
+        }
+      }
+
+      // Fetch fresh data silently in background
       google.script.run
         .withSuccessHandler(function(response) {
           if (response.success) {
-            // 1. Process Quote Master Data
-            globalMasterData = response.quoteMasterRecords || [];
-            setupFilters();
-            applyGlobalFilters();
-            setupExecFilters();
-            applyExecFilters();
-            
-            // 2. Process Revenue Data
-            globalRevenueRecords = response.revenueRecords || [];
-            revenueDataProcessed = true;
-            setupSalesFilters();
-            applySalesFilters();
-            
-            // 3. Cache and Eagerly Populate Dropdowns
-            if (response.dropdownData) {
-              cachedDropdownData = response.dropdownData;
-              formDropdownsLoaded = true;
-              populateFormDropdowns(response.dropdownData);
-            }
-            
-            // 4. Cache and Populate Lead Table
-            if (response.leadTableData) {
-              cachedLeadTableRows = response.leadTableData.rows || [];
-              cachedLeadTableTotal = response.leadTableData.total || 0;
-              buildLeadTable(cachedLeadTableRows);
-            }
-          } else {
-            console.error("Dashboard Combined Loading Error:", response.error);
-            showToast("\u274C Database Error: " + response.error, "error");
+            localStorage.setItem('qm_dashboard_data_v1', JSON.stringify(response));
           }
+          renderDashboardData(response);
         })
         .withFailureHandler(function(error) {
           console.error("Dashboard Combined Network Error:", error);
-          showToast("\u274C Network Error: Could not load data", "error");
+          if (!hasCache) {
+            showToast("\u274C Network Error: Could not load data", "error");
+          }
         })
         .getCombinedDashboardData();
     }
